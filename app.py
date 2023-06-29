@@ -6,6 +6,11 @@ import datetime
 import plotly.express as px
 from tab1 import get_corelations, get_importances
 
+st.set_page_config(
+    page_title="Data Visualization - Group 8",
+    page_icon="🧊",
+    layout="wide"
+)
 
 @st.cache_data
 def load_data():
