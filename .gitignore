@@ -4,3 +4,4 @@ etc/
 Scripts/
 share/
 pyenv.cfg
+__pycache__/
