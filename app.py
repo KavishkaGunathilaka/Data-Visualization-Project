@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from tab1 import get_corelations, get_importances
 from tab2 import break_into_categories, get_price_data, get_sentiment_data, merge_df
 
+nltk.download('stopwords')
+
 st.set_page_config(
     page_title="Data Visualization - Group 8",
     page_icon="📈",
