@@ -6,6 +6,7 @@ import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 from wordcloud import WordCloud
+import nltk
 from nltk.corpus import stopwords
 import matplotlib.pyplot as plt
 from tab1 import get_corelations, get_importances
