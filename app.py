@@ -4,11 +4,16 @@ import numpy as np
 from sklearn import preprocessing
 import datetime
 import plotly.express as px
+import plotly.graph_objects as go
+from wordcloud import WordCloud
+from nltk.corpus import stopwords
+import matplotlib.pyplot as plt
 from tab1 import get_corelations, get_importances
+from tab2 import break_into_categories, get_price_data, get_sentiment_data, merge_df
 
 st.set_page_config(
     page_title="Data Visualization - Group 8",
-    page_icon="🧊",
+    page_icon="📈",
     layout="wide"
 )
 
@@ -48,10 +53,16 @@ def preprocess_data(df):
 
     return enc_df
 
+@st.cache_data
+def load_review_data():
+    review_df = pd.read_csv('data/googleplaystore_user_reviews.csv')
+    return review_df
+
 def main():
     tab1, tab2 = st.tabs(["Question 1", "Question 2"])
     df = load_data()
     enc_df = preprocess_data(df)
+    reviews = load_review_data()
 
     with tab1:
         st.header("How to increase ratings on the Play Store?")
@@ -111,6 +122,84 @@ def main():
 
     with tab2:
         st.header("Are there any market opportunities for new apps?")
+        col1, col2 = st.columns(2)
+        with col1:
+            cats = break_into_categories(df)
+            fig = px.pie(cats, values=cats.values.reshape(-1,).tolist(), names=cats.index, title='Market Breakdown')
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            fig = px.box(df, y="Rating", x="Category", color="Category", title='50% of apps in the Dating category have a rating lesser than the average rating')
+            fig.add_hline(y=df.Rating.mean(), line_color='white', line_dash="dash")
+            st.plotly_chart(fig, use_container_width=True)
+
+        col3, col4 = st.columns(2)   
+        with col3:
+           data = get_price_data(df)
+           fig = px.bar(data, x='Category', y='App', color='Type')
+           st.plotly_chart(fig, use_container_width=True)
+
+        with col4:
+            temp = enc_df.copy()
+            temp.Installs = np.log10(temp.Installs)
+            fig = px.box(temp, y="Installs", x="Type", color="Type", title='Paid apps have a relatively lower number of downloads than free apps')
+            st.plotly_chart(fig, use_container_width=True)
+
+        col5, col6 = st.columns(2)
+        with col5:
+           new_df = get_sentiment_data(df, reviews)
+           trace1 = go.Bar(
+                x=list(new_df.Category[::3])[6:-5],
+                y= new_df.Sentiment_Normalized[::3][6:-5],
+                name='Negative',
+                marker=dict(color = 'rgb(209,49,20)')
+            )
+           
+           trace2 = go.Bar(
+                x=list(new_df.Category[::3])[6:-5],
+                y= new_df.Sentiment_Normalized[1::3][6:-5],
+                name='Neutral',
+                marker=dict(color = 'rgb(49,130,189)')
+            )
+           
+           trace3 = go.Bar(
+                x=list(new_df.Category[::3])[6:-5],
+                y= new_df.Sentiment_Normalized[2::3][6:-5],
+                name='Positive',
+                marker=dict(color = 'rgb(49,189,120)')
+            )
+
+           data = [trace1, trace2, trace3]
+           layout = go.Layout(
+                title = 'Sentiment analysis',
+                barmode='stack',
+                xaxis = {'tickangle': -45},
+                yaxis = {'title': 'Fraction of reviews'}
+            )
+
+           fig = go.Figure(data=data, layout=layout)
+           st.plotly_chart(fig, use_container_width=True)
+
+        with col6:
+            wc = WordCloud(background_color="black", max_words=200, colormap="Set2")
+            stop = stopwords.words('english')
+
+            merged_df = merge_df(df, reviews)
+            merged_df['Translated_Review'] = merged_df['Translated_Review'].apply(lambda x: " ".join(x for x in str(x).split(' ') if x not in stop))
+            merged_df.Translated_Review = merged_df.Translated_Review.apply(lambda x: x if 'app' not in x.split(' ') else np.nan)
+            merged_df.dropna(subset=['Translated_Review'], inplace=True)
+
+            option = st.selectbox(
+            'Category',
+            merged_df.Category.unique())
+            
+            free = merged_df.loc[(merged_df.Type=='Free') & (merged_df.Sentiment=='Negative') & (merged_df.Category==option)]['Translated_Review'].apply(lambda x: '' if x=='nan' else x)
+            wc.generate(''.join(str(free)))
+            fig = plt.figure(figsize=(10, 10))
+            plt.imshow(wc, interpolation='bilinear')
+            plt.axis("off")
+            st.pyplot(fig, use_container_width=True)
+
 
 if __name__ == '__main__':
     main()

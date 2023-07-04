@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-import streamlit as st
-
 
 def get_importances(enc_df):
     X = enc_df.drop(['Rating'],axis=1)
