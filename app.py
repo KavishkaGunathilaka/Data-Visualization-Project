@@ -186,6 +186,8 @@ def main():
         with col6:
             wc = WordCloud(background_color="black", max_words=200, colormap="Set2")
             stop = stopwords.words('english')
+            stop = stop + ['app', 'APP' ,'ap', 'App', 'apps', 'application', 'browser', 'website', 'websites', 'chrome', 'click', 'web', 'ip', 'address',
+            'files', 'android', 'browse', 'service', 'use', 'one', 'download', 'email', 'Launcher']
 
             merged_df = merge_df(df, reviews)
             merged_df['Translated_Review'] = merged_df['Translated_Review'].apply(lambda x: " ".join(x for x in str(x).split(' ') if x not in stop))
