@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from tab1 import get_corelations, get_importances
 from tab2 import break_into_categories, get_price_data, get_sentiment_data, merge_df
 
-nltk.download('stopwords')
+# nltk.download('stopwords')
 
 st.set_page_config(
     page_title="Data Visualization - Group 8",
@@ -74,11 +74,12 @@ def main():
         with st.container():
             with col1:
                 corr = get_corelations(enc_df)
-                fig = px.imshow(corr, text_auto=True, aspect="auto")
+                fig = px.imshow(corr, text_auto=True, aspect="auto", title="Correlation between attributes")
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
                 feature_importances = get_importances(enc_df)
-                fig = px.bar(feature_importances)
+                fig = px.bar(feature_importances, labels={"index": "Feature","value": "Importance"})
+                fig.update_layout(title="Feature importance of attributes for ratings", showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
 
         with st.container():
@@ -87,6 +88,7 @@ def main():
 
             if option == 'Category':
                 fig = px.box(df, x="Category", y="Rating", color="Category", title="Rating of application in each category is not different too much")
+                fig.update_layout(xaxis_tickangle = -45)
                 st.plotly_chart(fig, use_container_width=True)
             elif option == 'Reviews':
                 fig = px.scatter(df.loc[df.Reviews < 10000000], x="Reviews", y="Rating", trendline="ols",  trendline_color_override="red", title="As the number of reviews increase, the rating also increases")
@@ -114,13 +116,15 @@ def main():
                 fig = px.box(temp, x="PriceBand", y="Rating", color="PriceBand", title="Price are not effect to rating ,but if it is very expensive, it might get low rating")
                 st.plotly_chart(fig, use_container_width=True)
             elif option == 'Last Updated':
-                fig = px.scatter(enc_df, x="Last Updated", y="Rating", trendline="ols",  trendline_color_override="red", title="It seems like ratings of the apps are high when its regualry updated")
+                fig = px.scatter(enc_df, x="Last Updated", y="Rating", trendline="ols", labels={"Last Updated": "No of days since last update"}, trendline_color_override="red")
+                fig.update_layout(title="It seems like ratings of the apps are high when its regualry updated")
                 st.plotly_chart(fig, use_container_width=True)
             elif option == 'Size':
-                fig = px.scatter(enc_df, x="Size", y="Rating", trendline="ols",  trendline_color_override="red", title="")
+                fig = px.scatter(enc_df, x="Size", y="Rating", trendline="ols",  trendline_color_override="red", labels={"Size": "Size (MB)"})
+                fig.update_layout(title="Size of the application does not affect the rating")
                 st.plotly_chart(fig, use_container_width=True)
             elif option == 'Content Rating':
-                fig = px.box(df[df['Content Rating'] != 'Unrated'], x="Content Rating", y="Rating", color="Content Rating", title="Content Rating not effect too much to rating, but in Mature applications ,look like they get lower rating than other.")
+                fig = px.box(df[df['Content Rating'] != 'Unrated'], x="Content Rating", y="Rating", color="Content Rating", title="Content Rating not effect too much to rating. Mature applications get slightly lower rating than others while 18+ apps have higher average rating.")
                 st.plotly_chart(fig, use_container_width=True)
 
     with tab2:
@@ -134,18 +138,23 @@ def main():
         with col2:
             fig = px.box(df, y="Rating", x="Category", color="Category", title='50% of apps in the Dating category have a rating lesser than the average rating')
             fig.add_hline(y=df.Rating.mean(), line_color='white', line_dash="dash")
+            fig.update_layout(xaxis_tickangle = -45)
             st.plotly_chart(fig, use_container_width=True)
 
         col3, col4 = st.columns(2)   
         with col3:
            data = get_price_data(df)
            fig = px.bar(data, x='Category', y='App', color='Type')
+           fig.update_layout(xaxis_tickangle = -45, title='No of free and paid apps in each category')
            st.plotly_chart(fig, use_container_width=True)
 
         with col4:
             temp = enc_df.copy()
             temp.Installs = np.log10(temp.Installs)
-            fig = px.box(temp, y="Installs", x="Type", color="Type", title='Paid apps have a relatively lower number of downloads than free apps')
+            fig = px.box(temp, y="Installs", x="Type", color="Type", labels={"Installs": "log10 (Installs)"})
+            fig.update_layout(title="Paid apps have a relatively lower number of downloads than free apps")
+            new_names = {'0':'Free', '1': 'Paid'}
+            fig.for_each_trace(lambda t: t.update(name = new_names[t.name]))
             st.plotly_chart(fig, use_container_width=True)
 
         col5, col6 = st.columns(2)
@@ -174,7 +183,7 @@ def main():
 
            data = [trace1, trace2, trace3]
            layout = go.Layout(
-                title = 'Sentiment analysis',
+                title = 'Sentiment analysis of reviews',
                 barmode='stack',
                 xaxis = {'tickangle': -45},
                 yaxis = {'title': 'Fraction of reviews'}
@@ -187,20 +196,19 @@ def main():
             wc = WordCloud(background_color="black", max_words=200, colormap="Set2")
             stop = stopwords.words('english')
             stop = stop + ['app', 'APP' ,'ap', 'App', 'apps', 'application', 'browser', 'website', 'websites', 'chrome', 'click', 'web', 'ip', 'address',
-            'files', 'android', 'browse', 'service', 'use', 'one', 'download', 'email', 'Launcher']
+            'files', 'android', 'browse', 'service', 'use', 'one', 'download', 'email', 'Launcher', 'use', 'user', 'Iam', 'allowed', 'zoom', 'Translated_Review']
 
             merged_df = merge_df(df, reviews)
             merged_df['Translated_Review'] = merged_df['Translated_Review'].apply(lambda x: " ".join(x for x in str(x).split(' ') if x not in stop))
             merged_df.Translated_Review = merged_df.Translated_Review.apply(lambda x: x if 'app' not in x.split(' ') else np.nan)
             merged_df.dropna(subset=['Translated_Review'], inplace=True)
 
-            option = st.selectbox(
-            'Category',
-            merged_df.Category.unique())
+            option = st.selectbox('Category', merged_df.Category.unique())
             
             free = merged_df.loc[(merged_df.Type=='Free') & (merged_df.Sentiment=='Negative') & (merged_df.Category==option)]['Translated_Review'].apply(lambda x: '' if x=='nan' else x)
             wc.generate(''.join(str(free)))
-            fig = plt.figure(figsize=(10, 10))
+            fig = plt.figure(facecolor='black')
+            plt.title('Most common words in negative reviews',color='white')
             plt.imshow(wc, interpolation='bilinear')
             plt.axis("off")
             st.pyplot(fig, use_container_width=True)
