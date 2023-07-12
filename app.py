@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from tab1 import get_corelations, get_importances
 from tab2 import break_into_categories, get_price_data, get_sentiment_data, merge_df
 
-# nltk.download('stopwords')
+nltk.download('stopwords')
 
 st.set_page_config(
     page_title="Data Visualization - Group 8",
@@ -62,7 +62,7 @@ def load_review_data():
     return review_df
 
 def main():
-    tab1, tab2 = st.tabs(["Question 1", "Question 2"])
+    tab1, tab2, tab3 = st.tabs(["Question 1", "Question 2", "Question 3"])
     df = load_data()
     enc_df = preprocess_data(df)
     reviews = load_review_data()
@@ -212,6 +212,126 @@ def main():
             plt.imshow(wc, interpolation='bilinear')
             plt.axis("off")
             st.pyplot(fig, use_container_width=True)
+
+    with tab3:
+        st.header("What are the pricing strategies of the apps?")
+        col1, col2 = st.columns([0.4,0.6])
+        with col1:
+            num_free = enc_df['Type'].tolist().count(0)
+            num_paid = enc_df['Type'].tolist().count(1)
+
+            labels = ['Free', 'Paid']
+            sizes = [num_free, num_paid]
+            colors = ['#0a417a','#72b4eb' ]
+
+            # Create pie chart using Plotly
+            fig = go.Figure(data=[go.Pie(labels=labels, values=sizes,rotation=90, textinfo='label+percent',pull=[0.2, 0], marker=dict(colors=colors))])
+
+            # Customize layout
+            fig.update_layout(title='Distribution of Free vs Paid Apps')
+
+            # Display the pie chart using Streamlit
+            st.plotly_chart(fig)
+        
+        with col2:
+            features = ('Reviews', 'Installs','Rating')
+            option = st.selectbox('Feature', features)
+
+            # if option == 'Installs':
+                # Filter out values more than 100M
+            # filtered_df = enc_df[enc_df['Installs'] <= 4000000]
+
+            title ='Relation between '+ option + ' and Price'
+            fig = px.scatter(data_frame=enc_df, x='Price', y=option,title=title, marginal_x='histogram', marginal_y='histogram',
+                color_discrete_sequence=['orange'], height=500)
+            st.plotly_chart(fig)
+
+        col3 = st.container()
+        with col3:
+            df['Price'] = df.Price.str.strip('$').astype(float)
+            categories = df['Category'].unique().tolist()
+            data = [df[['Category', 'Price']][df['Category'] == c] for c in categories]
+
+            # Create scatter plot using Plotly
+            fig = go.Figure()
+            for i in range(len(categories)):
+                fig.add_trace(go.Scatter(
+                    x=data[i]['Category'],
+                    y=data[i]['Price'],
+                    mode='markers',
+                    name=categories[i]
+                ))
+
+            # Customize layout
+            fig.update_layout(
+                xaxis=dict(title='Category', tickangle=45),
+                yaxis=dict(title='Price ($)'),
+                title='Price Distribution by Category',
+                width=1400
+            )
+
+            # Display the scatter plot using Streamlit
+            st.plotly_chart(fig)
+
+        # with col4:
+
+        #     num_free = enc_df['Type'].tolist().count(0)
+        #     num_paid = enc_df['Type'].tolist().count(1)
+
+        #     labels = ['Free', 'Paid']
+        #     sizes = [num_free, num_paid]
+        #     colors = ['#0a417a','#72b4eb' ]
+
+        #     # Create pie chart using Plotly
+        #     fig = go.Figure(data=[go.Pie(labels=labels, values=sizes,rotation=90, textinfo='label+percent',pull=[0.2, 0], marker=dict(colors=colors))])
+
+        #     # Customize layout
+        #     fig.update_layout(title='Distribution of Free vs Paid Apps')
+
+        #     # Display the pie chart using Streamlit
+        #     st.plotly_chart(fig)
+
+        col5, col6 = st.columns(2)
+
+        with col5:
+            # grouped_df = df.groupby(['Category']).size().reset_index(name='Count')
+            grouped_df = df.groupby(['Category','Type']).size().reset_index(name='Count')
+            grouped_df = grouped_df[grouped_df['Type']=='Paid']
+            grouped_df = grouped_df.sort_values('Count', ascending=True)
+
+            fig = go.Figure(go.Bar(
+                x=grouped_df['Count'],
+                y=grouped_df['Category'],
+                orientation='h'
+            ))
+
+            fig.update_layout(
+                title='Count of Paid Apps by Categories',
+                xaxis_title='Count',
+                yaxis_title='Category'
+            )
+
+            st.plotly_chart(fig)
+
+        with col6:
+            grouped_df = df.groupby(['Category','Type']).size().reset_index(name='Count')
+            selected_categories = ['GAME', 'FAMILY', 'MEDICAL', 'TOOLS', 'PERSONALIZATION']
+            grouped_df = grouped_df[grouped_df['Category'].isin(selected_categories)].copy()
+
+
+
+            fig = px.sunburst(grouped_df, path=['Category', 'Type'], values='Count',color_continuous_scale=['yellow', 'blue'],
+                            hover_data=['Category', 'Type', 'Count'])
+
+            fig.update_traces(textinfo='label+value')
+            fig.update_layout(title='Count of Paid and Free Apps by Category (Sunburst Chart)')
+            st.plotly_chart(fig)
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
